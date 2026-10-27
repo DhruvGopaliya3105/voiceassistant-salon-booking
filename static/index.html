@@ -1,0 +1,848 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Voice Assistant</title>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f7fb;
+      color: #182230;
+    }
+
+    .container {
+      max-width: 1050px;
+      margin: auto;
+      padding: 24px 16px 40px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+
+    h1 { margin: 0 0 6px; font-size: 27px; }
+    h2 { font-size: 18px; margin-top: 0; }
+    p { line-height: 1.5; }
+    .muted { color: #657184; font-size: 13px; }
+
+    .status {
+      background: #e3f8eb;
+      color: #167343;
+      padding: 8px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .card, .panel {
+      background: white;
+      border: 1px solid #e5eaf1;
+      border-radius: 14px;
+      padding: 17px;
+      box-shadow: 0 4px 14px rgba(25, 40, 65, .035);
+    }
+
+    .metric-label { color: #657184; font-size: 12px; }
+
+    .metric-value {
+      font-size: 24px;
+      font-weight: 700;
+      margin-top: 9px;
+      overflow-wrap: anywhere;
+    }
+
+    .unit { color: #657184; font-size: 12px; margin-top: 5px; }
+    .panel { margin-bottom: 18px; }
+
+    textarea {
+      width: 100%;
+      min-height: 95px;
+      resize: vertical;
+      padding: 13px;
+      border: 1px solid #d5dce6;
+      border-radius: 10px;
+      font: inherit;
+      outline: none;
+    }
+
+    textarea:focus {
+      border-color: #4378ee;
+      box-shadow: 0 0 0 3px rgba(67, 120, 238, .12);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 9px;
+      padding: 11px 16px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      background: #e9edf4;
+      color: #263348;
+    }
+
+    button.primary { background: #285fe8; color: white; }
+    button.voice { background: #e7f0ff; color: #2055c8; }
+    button.danger { background: #fee9e7; color: #a52c27; }
+    button:disabled { opacity: .55; cursor: not-allowed; }
+
+    .answer {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      line-height: 1.7;
+      min-height: 45px;
+    }
+
+    .transcript {
+      background: #f5f7fa;
+      padding: 12px;
+      border-radius: 8px;
+      margin: 10px 0;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .small-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .log-list { display: grid; gap: 9px; }
+
+    .log-item {
+      padding: 12px;
+      border: 1px solid #e7ebf1;
+      border-radius: 9px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 13px;
+    }
+
+    .log-item span:last-child {
+      text-align: right;
+      color: #657184;
+      white-space: nowrap;
+    }
+
+    .error { color: #b42318; }
+    .success { color: #167343; }
+    .hidden { display: none; }
+
+    /* New chat UI. Other original styles are preserved. */
+    .chat-history {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 120px;
+      max-height: 420px;
+      overflow-y: auto;
+      padding: 14px;
+      margin: 12px 0 16px;
+      background: #f8fafc;
+      border: 1px solid #e5eaf1;
+      border-radius: 10px;
+    }
+
+    .chat-message {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-width: 86%;
+    }
+
+    .chat-message.user {
+      align-self: flex-end;
+      align-items: flex-end;
+    }
+
+    .chat-message.assistant {
+      align-self: flex-start;
+      align-items: flex-start;
+    }
+
+    .chat-role {
+      color: #657184;
+      font-size: 11px;
+      padding: 0 5px;
+    }
+
+    .chat-bubble {
+      padding: 11px 14px;
+      border-radius: 14px;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      line-height: 1.6;
+    }
+
+    .chat-message.user .chat-bubble {
+      background: #285fe8;
+      color: white;
+      border-bottom-right-radius: 4px;
+    }
+
+    .chat-message.assistant .chat-bubble {
+      background: white;
+      color: #182230;
+      border: 1px solid #e5eaf1;
+      border-bottom-left-radius: 4px;
+    }
+
+    .composer {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+    }
+
+    .composer textarea {
+      flex: 1;
+      min-height: 54px;
+      max-height: 140px;
+      resize: vertical;
+    }
+
+    .composer button {
+      min-height: 48px;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 720px) {
+      .grid, .small-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      header { align-items: flex-start; }
+      h1 { font-size: 23px; }
+    }
+
+    @media (max-width: 600px) {
+      .composer { flex-wrap: wrap; }
+      .composer textarea { flex-basis: 100%; }
+      .chat-message { max-width: 95%; }
+    }
+
+    @media (max-width: 390px) {
+      .grid, .small-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .card { padding: 12px; }
+      .metric-value { font-size: 20px; }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="container">
+    <header>
+      <div>
+        <h1>Voice Assistant</h1>
+        <div class="muted">Text chat · Microphone input · Spoken responses</div>
+      </div>
+      <div class="status" id="serverStatus">Checking server...</div>
+    </header>
+
+    <!-- Original latency dashboard -->
+    <section class="grid">
+      <div class="card">
+        <div class="metric-label">Speech-to-Text (STT)</div>
+        <div class="metric-value" id="sttValue">—</div>
+        <div class="unit">Seconds</div>
+      </div>
+      <div class="card">
+        <div class="metric-label">LLM Response</div>
+        <div class="metric-value" id="llmValue">—</div>
+        <div class="unit">Seconds</div>
+      </div>
+      <div class="card">
+        <div class="metric-label">TTS Start Delay</div>
+        <div class="metric-value" id="ttsStartValue">—</div>
+        <div class="unit">Browser speech · Seconds</div>
+      </div>
+      <div class="card">
+        <div class="metric-label">Server Total</div>
+        <div class="metric-value" id="totalValue">—</div>
+        <div class="unit">Seconds</div>
+      </div>
+    </section>
+
+    <!-- Chat interface: same input, persistent conversation -->
+    <section class="panel">
+      <h2>Ask a Question</h2>
+      <div class="muted">
+        Send text or record your voice. Previous messages remain visible.
+      </div>
+
+      <div class="chat-history" id="chatHistory" aria-live="polite">
+        <div class="chat-message assistant">
+          <div class="chat-role">Assistant</div>
+          <div class="chat-bubble">
+            Hi! Ask me anything, or tell me if you want to book a salon appointment.
+          </div>
+        </div>
+      </div>
+
+      <div class="composer">
+        <textarea
+          id="messageInput"
+          rows="2"
+          placeholder="Type your message..."
+          aria-label="Type your message"
+        ></textarea>
+        <button class="primary" id="sendButton" type="button">Send Message</button>
+        <button class="voice" id="recordButton" type="button">🎙 Start Recording</button>
+      </div>
+
+      <div class="actions">
+        <button id="stopSpeechButton" type="button">Stop Speaking</button>
+      </div>
+
+      <p class="muted" id="statusMessage" role="status">Ready to help.</p>
+
+      <!-- Keep original IDs for compatibility with existing JavaScript -->
+      <div class="hidden" aria-hidden="true">
+        <div id="transcript">No voice input yet.</div>
+        <div id="answer">Your answer will appear here.</div>
+      </div>
+    </section>
+
+    <!-- Original Performance Summary preserved -->
+    <section class="panel">
+      <h2>Performance Summary</h2>
+
+      <div class="small-grid">
+        <div class="card">
+          <div class="metric-label">Average STT</div>
+          <div class="metric-value" id="avgStt">—</div>
+          <div class="unit">Last 10 server requests</div>
+        </div>
+        <div class="card">
+          <div class="metric-label">Average LLM</div>
+          <div class="metric-value" id="avgLlm">—</div>
+          <div class="unit">Last 10 server requests</div>
+        </div>
+        <div class="card">
+          <div class="metric-label">Average TTS</div>
+          <div class="metric-value" id="avgTts">—</div>
+          <div class="unit">This page session</div>
+        </div>
+        <div class="card">
+          <div class="metric-label">Average Total</div>
+          <div class="metric-value" id="avgTotal">—</div>
+          <div class="unit">Last 10 server requests</div>
+        </div>
+      </div>
+
+      <div class="small-grid" style="margin-top:12px">
+        <div class="card">
+          <div class="metric-label">First Request</div>
+          <div class="metric-value" id="firstRequest">—</div>
+          <div class="unit">Server seconds</div>
+        </div>
+        <div class="card">
+          <div class="metric-label">Requests Since Restart</div>
+          <div class="metric-value" id="requestCount">0</div>
+          <div class="unit">Text + voice requests</div>
+        </div>
+        <div class="card">
+          <div class="metric-label">TTS Playback</div>
+          <div class="metric-value" id="ttsPlayback">—</div>
+          <div class="unit">Seconds</div>
+        </div>
+        <div class="card">
+          <div class="metric-label">TTS Samples</div>
+          <div class="metric-value" id="ttsSamples">0</div>
+          <div class="unit">Completed browser utterances</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Original logs section preserved -->
+    <section class="panel">
+      <h2>Recent Performance Logs</h2>
+      <p class="muted">Latest entries from the server history file.</p>
+      <div class="log-list" id="logList">
+        <div class="muted">No logs yet.</div>
+      </div>
+    </section>
+  </main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  // One session ID for text and voice messages in this browser page.
+  const sessionId = window.crypto?.randomUUID
+    ? window.crypto.randomUUID()
+    : "session-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+
+  let mediaRecorder = null;
+  let mediaStream = null;
+  let audioChunks = [];
+  let isRecording = false;
+  let ttsStartSamples = [];
+  let ttsPlaybackSamples = [];
+  let currentUtterance = null;
+  let requestInProgress = false;
+
+  function seconds(value) {
+    if (
+      value === null ||
+      value === undefined ||
+      !Number.isFinite(Number(value))
+    ) {
+      return "—";
+    }
+    return Number(value).toFixed(2);
+  }
+
+  function setStatus(message, isError = false) {
+    $("statusMessage").textContent = message;
+    $("statusMessage").className = isError ? "muted error" : "muted";
+  }
+
+  // Add messages without replacing the existing conversation.
+  function addChatMessage(role, text) {
+    const history = $("chatHistory");
+    const message = document.createElement("div");
+
+    message.className =
+      "chat-message " + (role === "user" ? "user" : "assistant");
+
+    const label = document.createElement("div");
+    label.className = "chat-role";
+    label.textContent = role === "user" ? "You" : "Assistant";
+
+    const bubble = document.createElement("div");
+    bubble.className = "chat-bubble";
+    bubble.textContent = text;
+
+    message.append(label, bubble);
+    history.appendChild(message);
+    history.scrollTop = history.scrollHeight;
+  }
+
+  async function postTtsLog(event, value) {
+    try {
+      await fetch("/browser-tts-log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ event, seconds: value })
+      });
+      await loadLogs();
+    } catch (error) {
+      console.warn("TTS log could not be saved:", error);
+    }
+  }
+
+  // Original browser TTS behavior retained.
+  function speakAnswer(text) {
+    if (!("speechSynthesis" in window)) {
+      setStatus("Browser speech is not supported. You can still read the answer.");
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    if (!text || !text.trim()) return;
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "en-US";
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    currentUtterance = utterance;
+
+    const requestedAt = performance.now();
+    let speechStarted = false;
+    const playbackStartedAt = { value: null };
+
+    utterance.onstart = () => {
+      speechStarted = true;
+      playbackStartedAt.value = performance.now();
+
+      const delay = (performance.now() - requestedAt) / 1000;
+      $("ttsStartValue").textContent = seconds(delay);
+      ttsStartSamples.push(delay);
+
+      $("avgTts").textContent = seconds(
+        ttsStartSamples.reduce((sum, n) => sum + n, 0) /
+        ttsStartSamples.length
+      );
+
+      postTtsLog("start_delay", delay);
+      setStatus("Speaking the answer...");
+    };
+
+    utterance.onend = () => {
+      const measured = playbackStartedAt.value === null
+        ? 0
+        : (performance.now() - playbackStartedAt.value) / 1000;
+
+      if (speechStarted && measured > 0) {
+        ttsPlaybackSamples.push(measured);
+        $("ttsPlayback").textContent = seconds(measured);
+        $("ttsSamples").textContent = ttsPlaybackSamples.length;
+        postTtsLog("playback_complete", measured);
+      }
+
+      if (currentUtterance === utterance) currentUtterance = null;
+      setStatus("Answer ready.");
+    };
+
+    utterance.onerror = (event) => {
+      if (currentUtterance === utterance) currentUtterance = null;
+      if (event.error !== "canceled") {
+        setStatus("Browser speech issue: " + event.error, true);
+      }
+    };
+
+    window.speechSynthesis.speak(utterance);
+  }
+
+  // Original latency dashboard updates retained.
+  function updateRequestMetrics(metrics) {
+    if (!metrics) return;
+
+    $("sttValue").textContent = seconds(metrics.stt_seconds);
+    $("llmValue").textContent = seconds(metrics.llm_seconds);
+    $("totalValue").textContent = seconds(metrics.total_seconds);
+
+    if (metrics.first_request_total_seconds !== undefined) {
+      $("firstRequest").textContent =
+        seconds(metrics.first_request_total_seconds);
+    }
+
+    $("requestCount").textContent = metrics.request_count ?? "—";
+
+    const averages = metrics.average_last_10 || {};
+    $("avgStt").textContent = seconds(averages.stt_seconds);
+    $("avgLlm").textContent = seconds(averages.llm_seconds);
+    $("avgTotal").textContent = seconds(averages.total_seconds);
+  }
+
+  // Text chat: append the message, clear the input, preserve history.
+  async function sendMessage() {
+    if (requestInProgress) return;
+
+    const input = $("messageInput");
+    const message = input.value.trim();
+
+    if (!message) {
+      setStatus("Please enter a question first.", true);
+      input.focus();
+      return;
+    }
+
+    addChatMessage("user", message);
+    input.value = "";
+    input.style.height = "auto";
+
+    requestInProgress = true;
+    $("sendButton").disabled = true;
+    $("recordButton").disabled = true;
+    setStatus("Generating answer...");
+    $("transcript").textContent = "Text input selected.";
+    window.speechSynthesis?.cancel();
+
+    try {
+      const response = await fetch("/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: message,
+          session_id: sessionId
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Request failed");
+      }
+
+      const answer = data.answer || "No answer returned.";
+      $("answer").textContent = answer;
+      addChatMessage("assistant", answer);
+
+      updateRequestMetrics(data.metrics);
+      setStatus("Answer received.");
+      speakAnswer(answer);
+      await loadLogs();
+
+    } catch (error) {
+      const errorMessage =
+        error.message || "Unable to contact the server.";
+
+      addChatMessage(
+        "assistant",
+        "Sorry, something went wrong: " + errorMessage
+      );
+      setStatus(errorMessage, true);
+
+    } finally {
+      requestInProgress = false;
+      $("sendButton").disabled = false;
+      $("recordButton").disabled = false;
+      input.focus();
+    }
+  }
+
+  // Original microphone recording flow retained.
+  async function startRecording() {
+    if (requestInProgress || isRecording) return;
+
+    if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+      setStatus("Microphone recording is not supported in this browser.", true);
+      return;
+    }
+
+    try {
+      mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunks = [];
+
+      const mimeTypes = [
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/mp4"
+      ];
+
+      const selectedType = mimeTypes.find(
+        type => MediaRecorder.isTypeSupported(type)
+      );
+
+      mediaRecorder = selectedType
+        ? new MediaRecorder(mediaStream, { mimeType: selectedType })
+        : new MediaRecorder(mediaStream);
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          audioChunks.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        try {
+          await submitRecording();
+        } finally {
+          mediaStream?.getTracks().forEach(track => track.stop());
+          mediaStream = null;
+          $("recordButton").textContent = "🎙 Start Recording";
+          $("recordButton").classList.remove("danger");
+          $("recordButton").disabled = false;
+          isRecording = false;
+        }
+      };
+
+      mediaRecorder.start();
+      isRecording = true;
+      $("recordButton").textContent = "■ Stop Recording";
+      $("recordButton").classList.add("danger");
+      setStatus("Listening... Speak clearly, then press Stop Recording.");
+
+    } catch (error) {
+      setStatus("Microphone permission failed: " + error.message, true);
+      mediaStream?.getTracks().forEach(track => track.stop());
+      mediaStream = null;
+    }
+  }
+
+  function stopRecording() {
+    if (
+      mediaRecorder &&
+      isRecording &&
+      mediaRecorder.state !== "inactive"
+    ) {
+      mediaRecorder.stop();
+      $("recordButton").disabled = true;
+      setStatus("Processing your recording...");
+    }
+  }
+
+  // Voice transcript and answer are appended to the same chat history.
+  async function submitRecording() {
+    if (!audioChunks.length) {
+      setStatus("No audio was captured. Please try again.", true);
+      return;
+    }
+
+    const type = mediaRecorder?.mimeType || "audio/webm";
+    const extension = type.includes("mp4") ? "mp4" : "webm";
+    const blob = new Blob(audioChunks, { type });
+    const formData = new FormData();
+
+    formData.append("audio", blob, "recording." + extension);
+    formData.append("session_id", sessionId);
+
+    requestInProgress = true;
+    $("sendButton").disabled = true;
+    $("recordButton").disabled = true;
+    window.speechSynthesis?.cancel();
+
+    try {
+      const response = await fetch("/voice", {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Voice request failed");
+      }
+
+      const transcript = data.transcript || "No transcript returned.";
+      const answer = data.answer || "No answer returned.";
+
+      $("transcript").textContent = transcript;
+      $("answer").textContent = answer;
+
+      if (transcript !== "No transcript returned.") {
+        addChatMessage("user", transcript);
+      }
+
+      addChatMessage("assistant", answer);
+      updateRequestMetrics(data.metrics);
+      setStatus("Voice request completed.");
+      speakAnswer(answer);
+      await loadLogs();
+
+    } catch (error) {
+      const errorMessage =
+        error.message || "Unable to process the recording.";
+
+      addChatMessage(
+        "assistant",
+        "Sorry, something went wrong: " + errorMessage
+      );
+      setStatus(errorMessage, true);
+
+    } finally {
+      requestInProgress = false;
+      $("sendButton").disabled = false;
+      $("recordButton").disabled = false;
+    }
+  }
+
+  // Original performance logs endpoint retained.
+  async function loadLogs() {
+    try {
+      const response = await fetch("/api/latency-history?limit=15");
+      const data = await response.json();
+      const list = $("logList");
+      list.replaceChildren();
+
+      if (!data.items?.length) {
+        list.textContent = "No logs yet.";
+        list.className = "log-list muted";
+        return;
+      }
+
+      list.className = "log-list";
+
+      for (const item of data.items) {
+        const row = document.createElement("div");
+        row.className = "log-item";
+
+        const left = document.createElement("span");
+        const right = document.createElement("span");
+
+        const date = item.timestamp
+          ? new Date(item.timestamp).toLocaleString()
+          : "Unknown time";
+
+        left.textContent = `${item.mode || "request"} · ${date}`;
+
+        if (item.event) {
+          right.textContent =
+            `${item.event}: ${seconds(item.seconds)} s`;
+        } else {
+          right.textContent =
+            `STT ${seconds(item.stt_seconds)} s · ` +
+            `LLM ${seconds(item.llm_seconds)} s · ` +
+            `Total ${seconds(item.total_seconds)} s`;
+        }
+
+        row.append(left, right);
+        list.appendChild(row);
+      }
+
+    } catch (error) {
+      console.warn("Unable to load logs:", error);
+    }
+  }
+
+  // Original server status endpoint retained.
+  async function checkServer() {
+    try {
+      const response = await fetch("/health");
+      if (!response.ok) throw new Error("Server unavailable");
+
+      const data = await response.json();
+      $("serverStatus").textContent = "● Server online";
+      $("serverStatus").title = "Model: " + (data.model || "configured");
+
+    } catch {
+      $("serverStatus").textContent = "● Server offline";
+    }
+  }
+
+  $("sendButton").addEventListener("click", sendMessage);
+
+  // Enter sends; Shift+Enter creates a new line.
+  $("messageInput").addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      sendMessage();
+    }
+  });
+
+  // Auto-resize input while the user types.
+  $("messageInput").addEventListener("input", () => {
+    const input = $("messageInput");
+    input.style.height = "auto";
+    input.style.height = Math.min(input.scrollHeight, 140) + "px";
+  });
+
+  $("recordButton").addEventListener("click", () => {
+    if (isRecording) stopRecording();
+    else startRecording();
+  });
+
+  $("stopSpeechButton").addEventListener("click", () => {
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+    currentUtterance = null;
+    setStatus("Speech stopped.");
+  });
+
+  checkServer();
+  loadLogs();
+  setInterval(checkServer, 10000);
+  setInterval(loadLogs, 15000);
+</script>
+</body>
+</html>
